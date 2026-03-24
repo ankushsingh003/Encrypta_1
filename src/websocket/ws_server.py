@@ -24,6 +24,9 @@ class MessageOut(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Optional[Dict] = None
 
+    def __init__(self, **data):
+        super().__init__(**data)
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, List[WebSocket]] = {}
@@ -64,35 +67,47 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
             message_in = MessageIn.model_validate_json(data)
             
             if message_in.type == "user_message":
-                # 1. Retrieve
-                docs, meets, score = retrieval_service.retrieve_documents(message_in.content)
-                context = "\n".join([doc.page_content for doc, _ in docs])
-                
-                # 2. LLM Generate
-                history = "\n".join([f"{m.sender_role}: {m.content}" for m in manager.message_history.get(conversation_id, [])[-5:]])
-                res_dict = await llm_service.generate_response(message_in.content, context, history)
-                
-                # 3. Process
-                rendered, should_escalate, follow_ups = ResponseProcessor.process(res_dict)
-                
-                # 4. Broadcast
-                out = MessageOut(
-                    conversation_id=conversation_id,
-                    type="assistant_message",
-                    sender_role="ai",
-                    content=rendered,
-                    channel="text",
-                    metadata={"low_confidence": not meets, "follow_up_questions": follow_ups}
-                )
-                await manager.broadcast(out)
-                
-                if should_escalate:
-                    ticket_id = TicketService.create_support_ticket(message_in.content, [], escalation_metadata={"auto_escalated": True})
+                try:
+                    # 1. Retrieve
+                    docs, meets, score = retrieval_service.retrieve_documents(message_in.content)
+                    context = "\n".join([doc.page_content for doc, _ in docs])
+                    
+                    # 2. LLM Generate
+                    history_lines = [f"{m.sender_role}: {m.content}" for m in manager.message_history.get(conversation_id, [])[-5:]]
+                    history = "\n".join(history_lines)
+                    
+                    res_dict = await llm_service.generate_response(message_in.content, context, history)
+                    
+                    # 3. Process
+                    rendered, should_escalate, follow_ups = ResponseProcessor.process(res_dict)
+                    
+                    # 4. Broadcast
+                    out = MessageOut(
+                        conversation_id=conversation_id,
+                        type="assistant_message",
+                        sender_role="ai",
+                        content=rendered,
+                        channel="text",
+                        metadata={"low_confidence": not meets, "follow_up_questions": follow_ups}
+                    )
+                    await manager.broadcast(out)
+                    
+                    if should_escalate:
+                        ticket_id = TicketService.create_support_ticket(message_in.content, [], escalation_metadata={"auto_escalated": True})
+                        await manager.broadcast(MessageOut(
+                            conversation_id=conversation_id,
+                            type="ticket_created",
+                            sender_role="system",
+                            content=f"Ticket created: {ticket_id}",
+                            channel="text"
+                        ))
+                except Exception as e:
+                    logger.error(f"Error in handle_user_message: {e}")
                     await manager.broadcast(MessageOut(
                         conversation_id=conversation_id,
-                        type="ticket_created",
+                        type="system",
                         sender_role="system",
-                        content=f"Ticket created: {ticket_id}",
+                        content=f"Error processing your message: {str(e)}",
                         channel="text"
                     ))
             else:
