@@ -10,11 +10,11 @@ import time
 st.set_page_config(
     page_title="Encrypta AI Assistant",
     page_icon="🛡️",
-    layout="centered", # Centered layout for a more focused experience
-    initial_sidebar_state="collapsed" # Hide sidebar by default
+    layout="wide", # Changed to wide for extreme-end positioning
+    initial_sidebar_state="collapsed"
 )
 
-# --- Custom Styling (Glassmorphism & Centered Layout & Watermark) ---
+# --- Custom Styling (Glassmorphism & Fixed Header & Centered Watermark) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
@@ -42,11 +42,11 @@ st.markdown("""
         transform: translate(-50%, -50%);
         font-size: 3.5rem;
         font-weight: 600;
-        color: rgba(122, 162, 247, 0.08); /* Low opacity */
+        color: rgba(122, 162, 247, 0.08);
         text-transform: lowercase;
         white-space: nowrap;
         pointer-events: none;
-        z-index: -1; /* Place behind everything */
+        z-index: -1;
         user-select: none;
         text-align: center;
     }
@@ -59,28 +59,26 @@ st.markdown("""
         border: 1px solid rgba(122, 162, 247, 0.1) !important;
         margin-bottom: 12px !important;
         padding: 12px !important;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     /* Custom Header */
-    .header-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(122, 162, 247, 0.2);
-    }
     .header-logo {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
         background: linear-gradient(90deg, #7aa2f7, #bb9af7);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 600;
+        text-align: center;
+        width: 100%;
     }
 
-    /* Follow-up Buttons */
-    .stButton>button {
-        border-radius: 8px !important;
+    /* Centered Chat Container */
+    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+        max-width: 850px;
+        margin: 0 auto;
     }
 </style>
 
@@ -117,8 +115,8 @@ if "ws_thread" not in st.session_state:
     st.session_state.ws_thread.start()
 
 # --- Main UI ---
-header_col1, header_col2 = st.columns([1, 4])
-with header_col1:
+col1, col2, col3 = st.columns([0.5, 3, 0.5])
+with col1:
     with st.popover("⚙️ Settings"):
         st.markdown("### Conversation Controls")
         if st.button("Clear Chat History", type="primary", use_container_width=True):
@@ -126,8 +124,8 @@ with header_col1:
             st.rerun()
         st.info("This will permanently delete the current session history.")
 
-with header_col2:
-    st.markdown('<div style="text-align: right;"><span class="header-logo">Encrypta Customer support agent</span></div>', unsafe_allow_html=True)
+with col2:
+    st.markdown('<div class="header-logo">Encrypta Customer support agent</div>', unsafe_allow_html=True)
 
 # Render Chat History
 for msg in st.session_state.history:
