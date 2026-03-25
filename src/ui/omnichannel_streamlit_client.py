@@ -117,13 +117,13 @@ if "ws_thread" not in st.session_state:
     st.session_state.ws_thread.start()
 
 # --- Main UI ---
-header_col1, header_col2 = st.columns([4, 1])
+header_col1, header_col2 = st.columns([1, 4])
 with header_col1:
-    st.markdown('<div class="header-logo">Encrypta AI</div>', unsafe_allow_html=True)
-with header_col2:
     if st.button("Clear History", type="secondary", use_container_width=True):
         st.session_state.history = []
         st.rerun()
+with header_col2:
+    st.markdown('<div style="text-align: right;"><span class="header-logo">Encrypta AI</span></div>', unsafe_allow_html=True)
 
 # Render Chat History
 for msg in st.session_state.history:
